@@ -4,6 +4,7 @@ use std::{
     net::{TcpListener, TcpStream},
     thread,
 };
+use gethostname::gethostname;
 
 fn main() {
     let address = match env::var("PING_LISTEN_PORT") {
@@ -29,8 +30,10 @@ fn handle_connection(mut stream: TcpStream) {
         .map(|result| result.unwrap())
         .take_while(|line| !line.is_empty())
         .collect();
+        let hostname = gethostname().to_string_lossy().to_string();
 
-    println!("REQUEST : {}", request[0]);
+    println!("REQUEST : {}, HOSTNAME : {}",request[0], hostname);    
+
 
     // Only if the requested URL is /ping and HTTP verb GET
     if request[0] == "GET /ping HTTP/1.1" || request[0] == "GET /ping HTTP/1.0" {
@@ -40,14 +43,13 @@ fn handle_connection(mut stream: TcpStream) {
             let (s1, s2) = data.split_once(": ").unwrap();
             response_body.push(format!("\"{}\": \"{}\"", s1, s2));
         }
-
         // Forge HTTP 200 response
         let response = format!("HTTP/1.1 200 OK\r\n");
         // Add Content-Type JSON header
         let response = format!("{response}Content-Type: application/json\r\n");
         // Add body
         let response = format!("{response}\r\n{{{}}}", response_body.join(","));
-        // Send response
+                // Send response
         match stream.write_all(response.as_bytes()) {
             Ok(_r) => (),
             // No panic
